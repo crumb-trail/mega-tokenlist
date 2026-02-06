@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { CHAIN_IDS, type Chain } from './chains'
+import { CHAIN_IDS, type EvmChain } from './chains'
 import type { TokenData, TokenList, TokenListToken } from './types'
 
 const DATA_DIR = path.join(__dirname, '..', 'data')
@@ -50,7 +50,7 @@ export function generate(): TokenList {
     for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
       if (!chainToken?.address) continue
 
-      const chainId = CHAIN_IDS[chain as Chain]
+      const chainId = CHAIN_IDS[chain as EvmChain]
       if (!chainId) continue
 
       const token: TokenListToken = {

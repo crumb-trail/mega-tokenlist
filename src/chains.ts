@@ -1,24 +1,34 @@
-// Chain configuration for MegaETH + Ethereum
+// Chain configuration for MegaETH ecosystem
 
 export const CHAINS = {
   ethereum: {
     id: 1,
     name: 'Ethereum',
     layer: 1,
+    evmCompatible: true,
   },
   megaeth: {
     id: 4326,
     name: 'MegaETH',
     layer: 2,
+    evmCompatible: true,
+  },
+  solana: {
+    id: 101, // Solana chain ID per Uniswap token-lists standard
+    name: 'Solana',
+    layer: 1,
+    evmCompatible: false,
   },
 } as const
 
 export type Chain = keyof typeof CHAINS
+export type EvmChain = 'ethereum' | 'megaeth'
+export type SourceChain = 'solana' // Non-EVM chains used only for source tracking
 export type L1Chain = 'ethereum'
 export type L2Chain = 'megaeth'
 
-// Chain ID lookup
-export const CHAIN_IDS: Record<Chain, number> = {
+// Chain ID lookup (EVM chains only - used for tokenlist generation)
+export const CHAIN_IDS: Record<EvmChain, number> = {
   ethereum: 1,
   megaeth: 4326,
 }

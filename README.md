@@ -4,10 +4,13 @@ The official token registry for the MegaETH ecosystem. This repository maintains
 
 ## Supported Chains
 
-| Chain    | Chain ID | Type |
-| -------- | -------- | ---- |
-| Ethereum | 1        | L1   |
-| MegaETH  | 4326     | L2   |
+| Chain    | Chain ID | Type   | Notes                    |
+| -------- | -------- | ------ | ------------------------ |
+| Ethereum | 1        | L1     | EVM                      |
+| MegaETH  | 4326     | L2     | EVM                      |
+| Solana   | 101      | Source | Non-EVM, for bridge tracking |
+
+**Note:** Solana is supported as a source chain for bridged assets. Tokens with a `solana` entry in `data.json` will have their source address tracked, but only EVM chain entries (Ethereum, MegaETH) appear in the generated tokenlist.
 
 ## Adding a Token
 
@@ -49,6 +52,29 @@ Example for a bridged token on MegaETH:
   }
 }
 ```
+
+### Tokens Bridged from Non-EVM Chains
+
+For tokens bridged from non-EVM chains like Solana, include the source chain address for tracking:
+
+```json
+{
+  "name": "Wrapped SOL",
+  "symbol": "WSOL",
+  "decimals": 9,
+  "tokens": {
+    "solana": {
+      "address": "So11111111111111111111111111111111111111112"
+    },
+    "megaeth": {
+      "address": "0x9a96E366F6b2ED5850A38B58D355a80aFD998411",
+      "bridge": "0xWormholeBridgeAddress..."
+    }
+  }
+}
+```
+
+The Solana address is stored for reference but only the MegaETH entry appears in the generated tokenlist.
 
 ### Optional Fields
 
