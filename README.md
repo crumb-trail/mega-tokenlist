@@ -8,7 +8,7 @@ The official token registry for the MegaETH ecosystem. This repository maintains
 | -------- | -------- | ------ | ------------------------ |
 | Ethereum | 1        | L1     | EVM                      |
 | MegaETH  | 4326     | L2     | EVM                      |
-| Solana   | 101      | Source | Non-EVM, for bridge tracking |
+| Solana   | -        | Source | Non-EVM, string identifier used |
 
 **Note:** Solana is supported as a source chain for bridged assets. Tokens with a `solana` entry in `data.json` will have their source address tracked, but only EVM chain entries (Ethereum, MegaETH) appear in the generated tokenlist.
 
@@ -84,8 +84,7 @@ The Solana source address is automatically added to the `extensions` of the gene
   "extensions": {
     "isNative": "unknown",
     "isOFT": "unknown",
-    "sourceChain": "Solana",
-    "sourceChainId": 101,
+    "sourceChain": "solana",
     "sourceAddress": "So11111111111111111111111111111111111111112"
   }
 }

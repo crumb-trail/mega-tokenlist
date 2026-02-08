@@ -25,9 +25,8 @@ export interface TokenExtensions {
   bridgeAddress?: string
   bridgeType?: 'canonical' | 'others'
   // Source chain info for tokens bridged from non-EVM chains
-  sourceChain?: string
-  sourceChainId?: number
-  sourceAddress?: string
+  sourceChain?: string      // e.g., "solana", "bitcoin"
+  sourceAddress?: string    // Address in native format for source chain
 }
 
 // Uniswap TokenList standard types

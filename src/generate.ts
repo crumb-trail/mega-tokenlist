@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { CHAIN_IDS, CHAINS, SOURCE_CHAIN_IDS, type EvmChain, type SourceChain } from './chains'
+import { CHAIN_IDS, SOURCE_CHAINS, type EvmChain, type SourceChain } from './chains'
 import type { TokenData, TokenList, TokenListToken } from './types'
 
 const DATA_DIR = path.join(__dirname, '..', 'data')
@@ -30,13 +30,11 @@ function readTokenData(symbol: string): TokenData {
 }
 
 // Find source chain info (non-EVM chains like Solana) for a token
-function findSourceChain(tokenData: TokenData): { chain: string; chainId: number; address: string } | null {
+function findSourceChain(tokenData: TokenData): { chain: string; address: string } | null {
   for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
-    const sourceChainId = SOURCE_CHAIN_IDS[chain as SourceChain]
-    if (sourceChainId && chainToken?.address) {
+    if (SOURCE_CHAINS.includes(chain as SourceChain) && chainToken?.address) {
       return {
-        chain: CHAINS[chain as SourceChain].name,
-        chainId: sourceChainId,
+        chain: chain, // Use lowercase chain key as identifier (e.g., "solana")
         address: chainToken.address,
       }
     }
@@ -86,7 +84,6 @@ export function generate(): TokenList {
       // Add source chain info if this token is bridged from a non-EVM chain
       if (sourceChain) {
         extensions.sourceChain = sourceChain.chain
-        extensions.sourceChainId = sourceChain.chainId
         extensions.sourceAddress = sourceChain.address
       }
 

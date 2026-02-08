@@ -14,7 +14,7 @@ export const CHAINS = {
     evmCompatible: true,
   },
   solana: {
-    id: 101, // Solana chain ID per Uniswap token-lists standard
+    id: null, // Non-EVM chain, uses string identifier
     name: 'Solana',
     layer: 1,
     evmCompatible: false,
@@ -33,10 +33,8 @@ export const CHAIN_IDS: Record<EvmChain, number> = {
   megaeth: 4326,
 }
 
-// Source chain IDs (non-EVM chains - used for source tracking in extensions)
-export const SOURCE_CHAIN_IDS: Record<SourceChain, number> = {
-  solana: 101,
-}
+// Source chains (non-EVM) - used for tracking bridged asset origins
+export const SOURCE_CHAINS: readonly SourceChain[] = ['solana'] as const
 
 // L2 to L1 mapping (for bridge relationships)
 export const L2_TO_L1: Record<L2Chain, L1Chain> = {
