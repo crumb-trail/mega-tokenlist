@@ -33,6 +33,11 @@ export const CHAIN_IDS: Record<EvmChain, number> = {
   megaeth: 4326,
 }
 
+// Source chain IDs (non-EVM chains - used for source tracking in extensions)
+export const SOURCE_CHAIN_IDS: Record<SourceChain, number> = {
+  solana: 101,
+}
+
 // L2 to L1 mapping (for bridge relationships)
 export const L2_TO_L1: Record<L2Chain, L1Chain> = {
   megaeth: 'ethereum',

@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { CHAIN_IDS, type EvmChain } from './chains'
+import { CHAIN_IDS, CHAINS, SOURCE_CHAIN_IDS, type EvmChain, type SourceChain } from './chains'
 import type { TokenData, TokenList, TokenListToken } from './types'
 
 const DATA_DIR = path.join(__dirname, '..', 'data')
@@ -29,6 +29,21 @@ function readTokenData(symbol: string): TokenData {
   return JSON.parse(content) as TokenData
 }
 
+// Find source chain info (non-EVM chains like Solana) for a token
+function findSourceChain(tokenData: TokenData): { chain: string; chainId: number; address: string } | null {
+  for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
+    const sourceChainId = SOURCE_CHAIN_IDS[chain as SourceChain]
+    if (sourceChainId && chainToken?.address) {
+      return {
+        chain: CHAINS[chain as SourceChain].name,
+        chainId: sourceChainId,
+        address: chainToken.address,
+      }
+    }
+  }
+  return null
+}
+
 export function generate(): TokenList {
   // Read all token directories
   const tokenDirs = fs
@@ -45,6 +60,7 @@ export function generate(): TokenList {
     const tokenDir = path.join(DATA_DIR, symbol)
     const tokenData = readTokenData(symbol)
     const logoExt = getLogoExtension(tokenDir)
+    const sourceChain = findSourceChain(tokenData)
 
     // Create token entries for each chain
     for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
@@ -53,25 +69,34 @@ export function generate(): TokenList {
       const chainId = CHAIN_IDS[chain as EvmChain]
       if (!chainId) continue
 
+      // Build extensions object
+      const extensions: TokenListToken['extensions'] = {
+        isNative: chainToken.isNative ?? 'unknown',
+        isOFT: chainToken.isOFT ?? 'unknown',
+      }
+
+      // Add bridge info if present
+      if (chainToken.bridge) {
+        extensions.bridgeAddress = chainToken.bridge
+        extensions.bridgeType = CANONICAL_BRIDGES.has(chainToken.bridge)
+          ? 'canonical'
+          : 'others'
+      }
+
+      // Add source chain info if this token is bridged from a non-EVM chain
+      if (sourceChain) {
+        extensions.sourceChain = sourceChain.chain
+        extensions.sourceChainId = sourceChain.chainId
+        extensions.sourceAddress = sourceChain.address
+      }
+
       const token: TokenListToken = {
         chainId,
         address: chainToken.address,
         name: tokenData.name,
         symbol: tokenData.symbol,
         decimals: tokenData.decimals,
-        extensions: chainToken.bridge
-          ? {
-              isNative: chainToken.isNative ?? 'unknown',
-              isOFT: chainToken.isOFT ?? 'unknown',
-              bridgeAddress: chainToken.bridge,
-              bridgeType: CANONICAL_BRIDGES.has(chainToken.bridge)
-                ? 'canonical'
-                : 'others',
-            }
-          : {
-              isNative: chainToken.isNative ?? 'unknown',
-              isOFT: chainToken.isOFT ?? 'unknown',
-            },
+        extensions,
       }
 
       if (logoExt) {

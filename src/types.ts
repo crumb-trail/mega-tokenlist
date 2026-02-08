@@ -24,6 +24,10 @@ export interface TokenExtensions {
   isOFT: boolean | 'unknown'
   bridgeAddress?: string
   bridgeType?: 'canonical' | 'others'
+  // Source chain info for tokens bridged from non-EVM chains
+  sourceChain?: string
+  sourceChainId?: number
+  sourceAddress?: string
 }
 
 // Uniswap TokenList standard types

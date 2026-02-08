@@ -74,7 +74,22 @@ For tokens bridged from non-EVM chains like Solana, include the source chain add
 }
 ```
 
-The Solana address is stored for reference but only the MegaETH entry appears in the generated tokenlist.
+The Solana source address is automatically added to the `extensions` of the generated MegaETH token entry:
+
+```json
+{
+  "chainId": 4326,
+  "address": "0x9a96E366F6b2ED5850A38B58D355a80aFD998411",
+  "symbol": "WSOL",
+  "extensions": {
+    "isNative": "unknown",
+    "isOFT": "unknown",
+    "sourceChain": "Solana",
+    "sourceChainId": 101,
+    "sourceAddress": "So11111111111111111111111111111111111111112"
+  }
+}
+```
 
 ### Optional Fields
 
