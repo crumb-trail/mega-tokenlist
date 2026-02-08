@@ -29,17 +29,19 @@ function readTokenData(symbol: string): TokenData {
   return JSON.parse(content) as TokenData
 }
 
-// Find the origin chain and its lockbox info
+// Find the origin chain info (chain name, bridge address, mechanism)
 function findOriginInfo(tokenData: TokenData): { 
   chain: string
-  lockbox?: string 
+  bridge?: string
+  mechanism?: Mechanism
 } | null {
   // First check EVM chains for explicit isOrigin
   for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
     if (chainToken?.isOrigin === true) {
       return {
         chain,
-        lockbox: chainToken.lockbox,
+        bridge: chainToken.bridge,
+        mechanism: chainToken.mechanism,
       }
     }
   }
@@ -48,7 +50,8 @@ function findOriginInfo(tokenData: TokenData): {
     if (SOURCE_CHAINS.includes(chain as SourceChain) && chainToken?.address) {
       return {
         chain,
-        lockbox: undefined, // Non-EVM chains don't have lockbox concept
+        bridge: undefined,
+        mechanism: undefined,
       }
     }
   }
@@ -76,8 +79,7 @@ function inferMechanism(chainToken: Token, isOrigin: boolean): Mechanism | 'unkn
   }
   // Infer from other fields
   if (isOrigin) {
-    if (chainToken.lockbox) return 'lock'
-    return 'native'
+    return chainToken.bridge ? 'lock' : 'native'
   }
   // Non-origin chain
   if (chainToken.isOFT) return 'burn'
@@ -124,20 +126,21 @@ export function generate(): TokenList {
       // Add origin chain info for non-origin tokens
       if (!isOrigin && originInfo) {
         extensions.originChain = originInfo.chain
-        if (originInfo.lockbox) {
-          extensions.lockboxAddress = originInfo.lockbox
+        // Include origin bridge info so trackers know where backing is
+        if (originInfo.bridge) {
+          extensions.originBridgeAddress = originInfo.bridge
+        }
+        if (originInfo.mechanism) {
+          extensions.originMechanism = originInfo.mechanism
         }
       }
 
-      // Add bridge/lockbox address based on mechanism
+      // Add bridge address for this chain
       if (chainToken.bridge) {
         extensions.bridgeAddress = chainToken.bridge
         extensions.bridgeType = CANONICAL_BRIDGES.has(chainToken.bridge)
           ? 'canonical'
           : 'others'
-      }
-      if (chainToken.lockbox) {
-        extensions.lockboxAddress = chainToken.lockbox
       }
 
       // Add source chain info if bridged from non-EVM chain

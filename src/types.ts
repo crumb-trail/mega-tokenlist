@@ -9,10 +9,9 @@ export interface Token {
   // Origin and mechanism
   isOrigin?: boolean        // True if token was originally created on this chain
   mechanism?: Mechanism     // How tokens enter/exit this chain
-  // Bridge/lockbox addresses
-  bridge?: string           // Bridge/OFT endpoint for mint/burn
-  lockbox?: string          // Lockbox address for lock mechanism
-  // Legacy/additional flags
+  // Bridge address (interpretation depends on mechanism)
+  bridge?: string           // Lock: lockbox address | Mint/Burn: bridge endpoint
+  // Token type flags
   isOFT?: boolean           // True if token is a LayerZero OFT
 }
 
@@ -33,10 +32,12 @@ export interface TokenExtensions {
   originChain?: string                  // Which chain has the origin supply
   // Mechanism
   mechanism: Mechanism | 'unknown'      // How tokens move on this chain
-  // Bridge info
-  bridgeAddress?: string                // Mint/burn contract address
+  // Bridge info (this chain)
+  bridgeAddress?: string                // Bridge contract (lockbox if lock, endpoint if mint/burn)
   bridgeType?: 'canonical' | 'others'   // Official MegaETH bridge vs third-party
-  lockboxAddress?: string               // Where tokens are locked (if mechanism=lock)
+  // Origin bridge info (for non-origin chains)
+  originBridgeAddress?: string          // Bridge address on origin chain
+  originMechanism?: Mechanism           // Mechanism on origin chain (usually 'lock' or 'burn')
   // Token type flags
   isOFT: boolean | 'unknown'            // LayerZero OFT token
   // Source chain for non-EVM bridged tokens

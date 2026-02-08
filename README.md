@@ -25,30 +25,6 @@ The generated tokenlist follows the [Uniswap Token List](https://github.com/Unis
 3. Add `logo.svg` or `logo.png` (256×256 recommended)
 4. Submit a PR
 
-### Minimal Example
-
-```
-data/
-└── WETH/
-    ├── data.json
-    └── logo.svg
-```
-
-```json
-{
-  "name": "Wrapped Ether",
-  "symbol": "WETH",
-  "decimals": 18,
-  "tokens": {
-    "megaeth": {
-      "address": "0x4200000000000000000000000000000000000006",
-      "isOrigin": true,
-      "mechanism": "native"
-    }
-  }
-}
-```
-
 ---
 
 ## Token Data Schema
@@ -71,19 +47,18 @@ Each chain entry in `tokens` supports:
 | ----------- | ------- | ----------------------------------------------------- |
 | `address`   | string  | Token contract address (required)                     |
 | `isOrigin`  | boolean | `true` if token was originally created on this chain  |
-| `mechanism` | string  | How tokens enter/exit: `"native"` `"lock"` `"mint"` `"burn"` |
-| `bridge`    | string  | Bridge/OFT endpoint address (for mint/burn)           |
-| `lockbox`   | string  | Lockbox contract address (for lock mechanism)         |
+| `mechanism` | string  | How tokens move: `"native"` `"lock"` `"mint"` `"burn"` |
+| `bridge`    | string  | Bridge contract address (lockbox if lock, endpoint if mint/burn) |
 | `isOFT`     | boolean | `true` if token is a LayerZero OFT                    |
 
 ### Mechanism Types
 
-| Mechanism  | Description                                      | Use Case                           |
-| ---------- | ------------------------------------------------ | ---------------------------------- |
-| `native`   | Token originated here, no bridge involved        | Native chain deployment            |
-| `lock`     | Tokens are locked here when bridging out         | Origin chain with lockbox          |
-| `mint`     | Tokens are minted here from another chain        | Destination for lock & mint bridge |
-| `burn`     | Tokens are burned here when bridging out         | OFT-style burn & mint              |
+| Mechanism  | Description                                      | `bridge` field contains     |
+| ---------- | ------------------------------------------------ | --------------------------- |
+| `native`   | Token originated here, no bridge involved        | (not needed)                |
+| `lock`     | Tokens are locked here when bridging out         | Lockbox contract address    |
+| `mint`     | Tokens are minted here from another chain        | Mint/bridge endpoint        |
+| `burn`     | Tokens are burned here when bridging out         | Burn/bridge endpoint        |
 
 ---
 
@@ -136,7 +111,7 @@ Native ETH bridged via the official MegaETH bridge:
     "ethereum": {
       "address": "0x0000000000000000000000000000000000000000",
       "isOrigin": true,
-      "mechanism": "native",
+      "mechanism": "lock",
       "bridge": "0x0CA3A2FBC3D770b578223FBB6b062fa875a2eE75"
     },
     "megaeth": {
@@ -159,6 +134,8 @@ Native ETH bridged via the official MegaETH bridge:
     "mechanism": "mint",
     "isOFT": "unknown",
     "originChain": "ethereum",
+    "originBridgeAddress": "0x0CA3A2FBC3D770b578223FBB6b062fa875a2eE75",
+    "originMechanism": "lock",
     "bridgeAddress": "0x4200000000000000000000000000000000000010",
     "bridgeType": "canonical"
   }
@@ -169,7 +146,7 @@ Native ETH bridged via the official MegaETH bridge:
 
 ### 3. OFT with Lockbox (CUSD)
 
-CUSD is an OFT that uses a lockbox on Ethereum. Tokens are locked on Ethereum, minted on other chains:
+CUSD is an OFT that uses a lockbox on Ethereum. Tokens are locked on Ethereum, minted on MegaETH:
 
 ```json
 {
@@ -181,7 +158,7 @@ CUSD is an OFT that uses a lockbox on Ethereum. Tokens are locked on Ethereum, m
       "address": "0xcCcc62962d17b8914c62D74FfB843d73B2a3cccC",
       "isOrigin": true,
       "mechanism": "lock",
-      "lockbox": "0xA62571EbdFfAbC3051a2e5B9e1f57b23D830c8Fd",
+      "bridge": "0xA62571EbdFfAbC3051a2e5B9e1f57b23D830c8Fd",
       "isOFT": true
     },
     "megaeth": {
@@ -204,7 +181,8 @@ CUSD is an OFT that uses a lockbox on Ethereum. Tokens are locked on Ethereum, m
     "isOrigin": true,
     "mechanism": "lock",
     "isOFT": true,
-    "lockboxAddress": "0xA62571EbdFfAbC3051a2e5B9e1f57b23D830c8Fd"
+    "bridgeAddress": "0xA62571EbdFfAbC3051a2e5B9e1f57b23D830c8Fd",
+    "bridgeType": "others"
   }
 }
 ```
@@ -219,14 +197,15 @@ CUSD is an OFT that uses a lockbox on Ethereum. Tokens are locked on Ethereum, m
     "mechanism": "mint",
     "isOFT": true,
     "originChain": "ethereum",
-    "lockboxAddress": "0xA62571EbdFfAbC3051a2e5B9e1f57b23D830c8Fd",
+    "originBridgeAddress": "0xA62571EbdFfAbC3051a2e5B9e1f57b23D830c8Fd",
+    "originMechanism": "lock",
     "bridgeAddress": "0xOFTEndpoint...",
     "bridgeType": "others"
   }
 }
 ```
 
-> **For data trackers:** The `lockboxAddress` on the MegaETH entry tells you where the backing tokens are locked on Ethereum. Don't double-count — tokens in the lockbox back the minted supply on MegaETH.
+> **For data trackers:** `originBridgeAddress` + `originMechanism: "lock"` tells you where backing tokens are locked. Don't double-count — tokens in the lockbox back the minted supply.
 
 ---
 
@@ -273,7 +252,7 @@ An OFT that burns on source and mints on destination (no lockbox):
 }
 ```
 
-> **For data trackers:** With burn & mint, total supply is conserved across chains. When tokens burn on Ethereum, they mint on MegaETH.
+> **For data trackers:** `mechanism: "burn"` means total supply is conserved across chains. When tokens burn on Ethereum, they mint on MegaETH.
 
 ---
 
@@ -322,29 +301,30 @@ A token bridged from Solana via Wormhole:
 
 ## Extensions Reference
 
-The `extensions` object in the generated tokenlist contains:
+The `extensions` object in the generated tokenlist:
 
 ### Origin & Mechanism
 
-| Field         | Type                        | Description                                    |
-| ------------- | --------------------------- | ---------------------------------------------- |
-| `isOrigin`    | `boolean` \| `"unknown"`    | Is this the canonical origin chain?            |
-| `originChain` | `string`                    | Which chain has the origin supply              |
-| `mechanism`   | `string` \| `"unknown"`     | `"native"` `"lock"` `"mint"` `"burn"`          |
+| Field              | Type                    | Description                                |
+| ------------------ | ----------------------- | ------------------------------------------ |
+| `isOrigin`         | `boolean \| "unknown"`  | Is this the canonical origin chain?        |
+| `originChain`      | `string`                | Which chain has the origin supply          |
+| `mechanism`        | `string \| "unknown"`   | `"native"` `"lock"` `"mint"` `"burn"`      |
+| `originMechanism`  | `string`                | Mechanism on origin chain                  |
 
 ### Bridge Info
 
-| Field            | Type     | Description                                     |
-| ---------------- | -------- | ----------------------------------------------- |
-| `bridgeAddress`  | `string` | Bridge/OFT contract for mint/burn operations    |
-| `bridgeType`     | `string` | `"canonical"` (official) or `"others"`          |
-| `lockboxAddress` | `string` | Where tokens are locked (from origin chain)     |
+| Field                 | Type     | Description                                     |
+| --------------------- | -------- | ----------------------------------------------- |
+| `bridgeAddress`       | `string` | Bridge contract on this chain                   |
+| `bridgeType`          | `string` | `"canonical"` (official) or `"others"`          |
+| `originBridgeAddress` | `string` | Bridge contract on origin chain (lockbox if lock) |
 
 ### Token Flags
 
-| Field   | Type                     | Description                     |
-| ------- | ------------------------ | ------------------------------- |
-| `isOFT` | `boolean` \| `"unknown"` | LayerZero Omnichain Fungible Token |
+| Field   | Type                   | Description                        |
+| ------- | ---------------------- | ---------------------------------- |
+| `isOFT` | `boolean \| "unknown"` | LayerZero Omnichain Fungible Token |
 
 ### Non-EVM Source
 
@@ -357,22 +337,29 @@ The `extensions` object in the generated tokenlist contains:
 
 ## For Data Trackers
 
-This tokenlist is designed to help track token movement across chains without double-counting:
+This tokenlist helps track token movement across chains without double-counting:
 
-1. **Check `isOrigin`**: The origin chain holds the canonical supply
-2. **Check `mechanism`**:
-   - `lock`: Tokens here are locked, backing supply elsewhere
-   - `mint`: Tokens here are minted, backed by locked/burned tokens elsewhere
-   - `burn`: Tokens burned here are minted elsewhere
-   - `native`: No bridging, this is the only supply
-3. **Use `lockboxAddress`**: Track locked tokens that back minted supply
-4. **Use `originChain`**: Know where to find the canonical supply
+| Check | What it tells you |
+| ----- | ----------------- |
+| `isOrigin: true` | This chain holds the canonical supply |
+| `mechanism: "lock"` | Tokens here are locked, backing supply elsewhere |
+| `mechanism: "mint"` | Tokens here are minted, backed by locked/burned tokens elsewhere |
+| `mechanism: "burn"` | Tokens burned here are minted elsewhere (supply conserved) |
+| `originBridgeAddress` | Where to watch for locked/backing tokens |
 
-### Example: CUSD Tracking
+### Example: CUSD Supply Tracking
 
-- **Ethereum** (`isOrigin: true`, `mechanism: lock`): Watch `lockboxAddress` for locked supply
-- **MegaETH** (`isOrigin: false`, `mechanism: mint`): Minted supply, backed by Ethereum lockbox
-- **Total Supply** = Ethereum circulating + Ethereum locked = MegaETH minted + Ethereum circulating
+```
+Ethereum (isOrigin: true, mechanism: lock)
+├── Circulating: tokens held by users
+└── Locked: tokens in bridgeAddress (backs MegaETH supply)
+
+MegaETH (isOrigin: false, mechanism: mint)
+└── Minted: backed 1:1 by Ethereum locked tokens
+
+Total Supply = Ethereum Circulating + Ethereum Locked
+             = Ethereum Circulating + MegaETH Minted
+```
 
 ---
 
@@ -395,8 +382,6 @@ pnpm install
 pnpm generate
 ```
 
-Creates `megaeth.tokenlist.json` in the project root.
-
 ### Run Tests
 
 ```bash
@@ -408,7 +393,7 @@ pnpm test
 ## Requirements
 
 - Token must be deployed on at least one supported chain
-- Logo must be SVG or PNG format, minimum 200×200px
+- Logo must be SVG or PNG, minimum 200×200px
 - EVM addresses must be checksummed ([EIP-55](https://eips.ethereum.org/EIPS/eip-55))
 
 ---
