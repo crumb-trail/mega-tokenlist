@@ -1,7 +1,7 @@
 import * as fs from 'fs'
 import * as path from 'path'
 import { CHAIN_IDS, SOURCE_CHAINS, type EvmChain, type SourceChain } from './chains'
-import type { TokenData, TokenList, TokenListToken } from './types'
+import type { Mechanism, Token, TokenData, TokenList, TokenListToken } from './types'
 
 const DATA_DIR = path.join(__dirname, '..', 'data')
 const OUTPUT_FILE = path.join(__dirname, '..', 'megaeth.tokenlist.json')
@@ -29,17 +29,60 @@ function readTokenData(symbol: string): TokenData {
   return JSON.parse(content) as TokenData
 }
 
+// Find the origin chain and its lockbox info
+function findOriginInfo(tokenData: TokenData): { 
+  chain: string
+  lockbox?: string 
+} | null {
+  // First check EVM chains for explicit isOrigin
+  for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
+    if (chainToken?.isOrigin === true) {
+      return {
+        chain,
+        lockbox: chainToken.lockbox,
+      }
+    }
+  }
+  // Check non-EVM source chains
+  for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
+    if (SOURCE_CHAINS.includes(chain as SourceChain) && chainToken?.address) {
+      return {
+        chain,
+        lockbox: undefined, // Non-EVM chains don't have lockbox concept
+      }
+    }
+  }
+  return null
+}
+
 // Find source chain info (non-EVM chains like Solana) for a token
 function findSourceChain(tokenData: TokenData): { chain: string; address: string } | null {
   for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
     if (SOURCE_CHAINS.includes(chain as SourceChain) && chainToken?.address) {
       return {
-        chain: chain, // Use lowercase chain key as identifier (e.g., "solana")
+        chain,
         address: chainToken.address,
       }
     }
   }
   return null
+}
+
+// Infer mechanism if not explicitly set
+function inferMechanism(chainToken: Token, isOrigin: boolean): Mechanism | 'unknown' {
+  // Explicit mechanism takes precedence
+  if (chainToken.mechanism) {
+    return chainToken.mechanism
+  }
+  // Infer from other fields
+  if (isOrigin) {
+    if (chainToken.lockbox) return 'lock'
+    return 'native'
+  }
+  // Non-origin chain
+  if (chainToken.isOFT) return 'burn'
+  if (chainToken.bridge) return 'mint'
+  return 'unknown'
 }
 
 export function generate(): TokenList {
@@ -59,29 +102,45 @@ export function generate(): TokenList {
     const tokenData = readTokenData(symbol)
     const logoExt = getLogoExtension(tokenDir)
     const sourceChain = findSourceChain(tokenData)
+    const originInfo = findOriginInfo(tokenData)
 
-    // Create token entries for each chain
+    // Create token entries for each EVM chain
     for (const [chain, chainToken] of Object.entries(tokenData.tokens)) {
       if (!chainToken?.address) continue
 
       const chainId = CHAIN_IDS[chain as EvmChain]
       if (!chainId) continue
 
+      const isOrigin = chainToken.isOrigin === true
+      const mechanism = inferMechanism(chainToken, isOrigin)
+
       // Build extensions object
       const extensions: TokenListToken['extensions'] = {
-        isNative: chainToken.isNative ?? 'unknown',
+        isOrigin: chainToken.isOrigin ?? 'unknown',
+        mechanism,
         isOFT: chainToken.isOFT ?? 'unknown',
       }
 
-      // Add bridge info if present
+      // Add origin chain info for non-origin tokens
+      if (!isOrigin && originInfo) {
+        extensions.originChain = originInfo.chain
+        if (originInfo.lockbox) {
+          extensions.lockboxAddress = originInfo.lockbox
+        }
+      }
+
+      // Add bridge/lockbox address based on mechanism
       if (chainToken.bridge) {
         extensions.bridgeAddress = chainToken.bridge
         extensions.bridgeType = CANONICAL_BRIDGES.has(chainToken.bridge)
           ? 'canonical'
           : 'others'
       }
+      if (chainToken.lockbox) {
+        extensions.lockboxAddress = chainToken.lockbox
+      }
 
-      // Add source chain info if this token is bridged from a non-EVM chain
+      // Add source chain info if bridged from non-EVM chain
       if (sourceChain) {
         extensions.sourceChain = sourceChain.chain
         extensions.sourceAddress = sourceChain.address

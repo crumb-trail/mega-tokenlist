@@ -1,11 +1,19 @@
 import type { Chain } from './chains'
 
+// Bridge/token mechanism types
+export type Mechanism = 'native' | 'lock' | 'mint' | 'burn'
+
 // Token address on a specific chain
 export interface Token {
   address: string
-  bridge?: string // Bridge address if token is bridged (not native)
-  isNative?: boolean // True if token is native to the chain
-  isOFT?: boolean // True if token is OFT (LayerZero Omnichain Fungible Token)
+  // Origin and mechanism
+  isOrigin?: boolean        // True if token was originally created on this chain
+  mechanism?: Mechanism     // How tokens enter/exit this chain
+  // Bridge/lockbox addresses
+  bridge?: string           // Bridge/OFT endpoint for mint/burn
+  lockbox?: string          // Lockbox address for lock mechanism
+  // Legacy/additional flags
+  isOFT?: boolean           // True if token is a LayerZero OFT
 }
 
 // Token data.json schema
@@ -18,15 +26,22 @@ export interface TokenData {
   tokens: Partial<Record<Chain, Token>>
 }
 
-// Token extensions for native/bridged status
+// Token extensions in generated output
 export interface TokenExtensions {
-  isNative: boolean | 'unknown'
-  isOFT: boolean | 'unknown'
-  bridgeAddress?: string
-  bridgeType?: 'canonical' | 'others'
-  // Source chain info for tokens bridged from non-EVM chains
-  sourceChain?: string      // e.g., "solana", "bitcoin"
-  sourceAddress?: string    // Address in native format for source chain
+  // Origin tracking
+  isOrigin: boolean | 'unknown'         // Is this the canonical origin chain?
+  originChain?: string                  // Which chain has the origin supply
+  // Mechanism
+  mechanism: Mechanism | 'unknown'      // How tokens move on this chain
+  // Bridge info
+  bridgeAddress?: string                // Mint/burn contract address
+  bridgeType?: 'canonical' | 'others'   // Official MegaETH bridge vs third-party
+  lockboxAddress?: string               // Where tokens are locked (if mechanism=lock)
+  // Token type flags
+  isOFT: boolean | 'unknown'            // LayerZero OFT token
+  // Source chain for non-EVM bridged tokens
+  sourceChain?: string                  // e.g., "solana"
+  sourceAddress?: string                // Address on source chain
 }
 
 // Uniswap TokenList standard types
